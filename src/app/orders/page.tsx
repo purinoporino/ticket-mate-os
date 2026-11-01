@@ -1,3 +1,4 @@
+export const dynamic = 'force-dynamic'
 import { unstable_noStore as noStore } from 'next/cache'
 import { getOrders } from '@/lib/db'
 import OrdersClient from './OrdersClient'
