@@ -1,0 +1,19 @@
+# Render deployment config for Ticket Mate OS bot worker
+# Docs: https://render.com/docs/yaml-spec
+services:
+  - type: worker
+    name: ticket-mate-bot
+    runtime: node
+    plan: free
+    rootDir: src/bot
+    buildCommand: npm install && npx playwright install --with-deps chromium
+    startCommand: npm start
+    envVars:
+      - key: DATABASE_URL_UNPOOLED
+        sync: false          # set manually in Render dashboard
+      - key: POLL_INTERVAL_MS
+        value: "5000"
+      - key: SCREENSHOT_DIR
+        value: "/tmp/screenshots"
+      - key: NODE_VERSION
+        value: "20"
