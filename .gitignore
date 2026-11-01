@@ -39,3 +39,8 @@ yarn-error.log*
 # typescript
 *.tsbuildinfo
 next-env.d.ts
+
+# bot
+src/bot/node_modules/
+src/bot/package-lock.json
+src/bot/screenshots/
