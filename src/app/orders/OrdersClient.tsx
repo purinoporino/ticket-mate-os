@@ -1,0 +1,131 @@
+"use client"
+import { useState } from 'react'
+import { useRouter } from 'next/navigation'
+
+const STATUS_LABEL: Record<string, string> = {
+  pending: 'ใหม่', ready_for_booking: 'รอกด', bot_working: 'กำลังกด',
+  awaiting_confirmation: 'รอยืนยัน', confirmed: 'ยืนยันแล้ว',
+  booking_successful: 'สำเร็จ', booking_failed: 'ล้มเหลว',
+}
+const STATUS_COLOR: Record<string, string> = {
+  pending: '#7c3aed', ready_for_booking: '#3b82f6', bot_working: '#f59e0b',
+  awaiting_confirmation: '#ef4444', confirmed: '#06b6d4',
+  booking_successful: '#10b981', booking_failed: '#6b7280',
+}
+
+export default function OrdersClient({ orders }: { orders: any[] }) {
+  const router = useRouter()
+  const [loading, setLoading] = useState<string | null>(null)
+  const [screenshot, setScreenshot] = useState<{ url: string; orderNum: string } | null>(null)
+
+  async function updateStatus(id: string, status: string) {
+    setLoading(id + status)
+    await fetch(`/api/orders/${id}/status`, {
+      method: 'PATCH',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ status }),
+    })
+    setLoading(null)
+    router.refresh()
+  }
+
+  return (
+    <div>
+      {/* Screenshot modal */}
+      {screenshot && (
+        <div onClick={() => setScreenshot(null)} style={{
+          position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.8)',
+          display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 100
+        }}>
+          <div onClick={e => e.stopPropagation()} style={{
+            background: '#1a1a2e', borderRadius: 12, padding: 24, maxWidth: 800, width: '90%'
+          }}>
+            <p style={{ color: '#a0a0b8', marginBottom: 12 }}>Screenshot — {screenshot.orderNum}</p>
+            <img src={screenshot.url} style={{ width: '100%', borderRadius: 8 }} alt="screenshot" />
+            <button onClick={() => setScreenshot(null)} style={{
+              marginTop: 16, padding: '8px 24px', background: '#374151',
+              color: '#fff', border: 'none', borderRadius: 8, cursor: 'pointer'
+            }}>ปิด</button>
+          </div>
+        </div>
+      )}
+
+      <div style={{ marginBottom: 24 }}>
+        <h1 style={{ fontSize: 26, fontWeight: 700, color: '#e8e8f0' }}>ออเดอร์ทั้งหมด</h1>
+        <p style={{ color: '#a0a0b8', marginTop: 4 }}>{orders.length} รายการ</p>
+      </div>
+
+      <div style={{ background: '#12122a', borderRadius: 12, overflow: 'hidden' }}>
+        <table style={{ width: '100%', borderCollapse: 'collapse' }}>
+          <thead>
+            <tr style={{ borderBottom: '1px solid #2a2a4a' }}>
+              {['รหัส','ลูกค้า','คอนเสิร์ต','จำนวน','สถานะ','จัดการ'].map(h => (
+                <th key={h} style={{ padding: '14px 16px', textAlign: 'left', color: '#a0a0b8', fontSize: 13, fontWeight: 600 }}>{h}</th>
+              ))}
+            </tr>
+          </thead>
+          <tbody>
+            {orders.length === 0 && (
+              <tr><td colSpan={6} style={{ padding: 40, textAlign: 'center', color: '#a0a0b8' }}>ยังไม่มีออเดอร์</td></tr>
+            )}
+            {orders.map((o, i) => (
+              <tr key={o.id} style={{ borderBottom: '1px solid #1a1a3a', background: i % 2 === 0 ? 'transparent' : '#0d0d20' }}>
+                <td style={{ padding: '14px 16px' }}>
+                  <span style={{ color: '#a78bfa', fontWeight: 600 }}>{o.order_number}</span>
+                </td>
+                <td style={{ padding: '14px 16px', color: '#e8e8f0' }}>{o.customer_name || '—'}</td>
+                <td style={{ padding: '14px 16px', color: '#e8e8f0' }}>{o.event_name || '—'}</td>
+                <td style={{ padding: '14px 16px', color: '#e8e8f0' }}>{o.quantity}</td>
+                <td style={{ padding: '14px 16px' }}>
+                  <span style={{
+                    background: STATUS_COLOR[o.status] + '22',
+                    color: STATUS_COLOR[o.status],
+                    padding: '4px 10px', borderRadius: 20, fontSize: 12, fontWeight: 600
+                  }}>{STATUS_LABEL[o.status] || o.status}</span>
+                </td>
+                <td style={{ padding: '14px 16px' }}>
+                  <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
+                    {/* Screenshot button */}
+                    {o.bot_screenshot_url && (
+                      <button onClick={() => setScreenshot({ url: o.bot_screenshot_url, orderNum: o.order_number })}
+                        style={{ padding: '5px 12px', background: '#1e3a5f', color: '#60a5fa', border: '1px solid #3b82f6', borderRadius: 6, cursor: 'pointer', fontSize: 12 }}>
+                        📸 ดูรูป
+                      </button>
+                    )}
+                    {/* Confirm button */}
+                    {o.status === 'awaiting_confirmation' && (
+                      <button
+                        disabled={!!loading}
+                        onClick={() => updateStatus(o.id, 'confirmed')}
+                        style={{ padding: '5px 12px', background: '#064e3b', color: '#10b981', border: '1px solid #10b981', borderRadius: 6, cursor: 'pointer', fontSize: 12, opacity: loading ? 0.6 : 1 }}>
+                        {loading === o.id + 'confirmed' ? '...' : '✅ Confirm'}
+                      </button>
+                    )}
+                    {/* Reject button */}
+                    {['awaiting_confirmation', 'bot_working', 'ready_for_booking'].includes(o.status) && (
+                      <button
+                        disabled={!!loading}
+                        onClick={() => updateStatus(o.id, 'booking_failed')}
+                        style={{ padding: '5px 12px', background: '#450a0a', color: '#ef4444', border: '1px solid #ef4444', borderRadius: 6, cursor: 'pointer', fontSize: 12, opacity: loading ? 0.6 : 1 }}>
+                        {loading === o.id + 'booking_failed' ? '...' : '❌ ยกเลิก'}
+                      </button>
+                    )}
+                    {/* Re-queue button */}
+                    {o.status === 'booking_failed' && (
+                      <button
+                        disabled={!!loading}
+                        onClick={() => updateStatus(o.id, 'ready_for_booking')}
+                        style={{ padding: '5px 12px', background: '#1e1b4b', color: '#818cf8', border: '1px solid #6366f1', borderRadius: 6, cursor: 'pointer', fontSize: 12, opacity: loading ? 0.6 : 1 }}>
+                        🔄 ลองใหม่
+                      </button>
+                    )}
+                  </div>
+                </td>
+              </tr>
+            ))}
+          </tbody>
+        </table>
+      </div>
+    </div>
+  )
+}
