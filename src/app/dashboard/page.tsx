@@ -1,3 +1,4 @@
+import { unstable_noStore as noStore } from 'next/cache'
 import { getDashboardStats, getOrders } from '@/lib/db'
 
 const STATUS_LABEL: Record<string, string> = {
@@ -20,6 +21,7 @@ const STATUS_COLOR: Record<string, string> = {
 }
 
 export default async function Dashboard() {
+  noStore()
   const [stats, orders] = await Promise.all([
     getDashboardStats(),
     getOrders(10),
@@ -38,6 +40,8 @@ export default async function Dashboard() {
 
   return (
     <div>
+      {/* Auto-refresh every 5 seconds */}
+      <script dangerouslySetInnerHTML={{ __html: 'setTimeout(()=>location.reload(),5000)' }} />
       <div style={{ marginBottom: 28 }}>
         <h1 style={{ fontSize: 26, fontWeight: 700, color: '#e8e8f0' }}>Dashboard</h1>
         <p style={{ color: '#a0a0b8', marginTop: 4, fontSize: 14 }}>ภาพรวมระบบ Ticket Mate OS</p>
