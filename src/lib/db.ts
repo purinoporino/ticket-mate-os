@@ -13,6 +13,23 @@ export type OrderStatus =
   | 'booking_successful'
   | 'booking_failed'
 
+export interface Order {
+  id: string
+  order_number: string
+  customer_id: string | null
+  event_id: string | null
+  seat_zone: string | null
+  quantity: number
+  price_per_ticket: number | null
+  total_price: number | null
+  status: OrderStatus
+  bot_screenshot_url: string | null
+  bot_session_id: string | null
+  special_instructions: string | null
+  created_at: string
+  updated_at: string
+}
+
 export async function getOrders(limit = 50) {
   return sql`
     SELECT o.*, c.name as customer_name, e.name as event_name
@@ -38,9 +55,9 @@ export async function getOrder(id: string) {
 
 export async function updateOrderStatus(id: string, status: OrderStatus, extra?: Record<string, unknown>) {
   if (extra?.bot_screenshot_url !== undefined) {
-    return sql\`UPDATE orders SET status = \${status}, bot_screenshot_url = \${extra.bot_screenshot_url as string}, updated_at = NOW() WHERE id = \${id} RETURNING *\`
+    return sql`UPDATE orders SET status = ${status}, bot_screenshot_url = ${extra.bot_screenshot_url as string}, updated_at = NOW() WHERE id = ${id} RETURNING *`
   }
-  return sql\`UPDATE orders SET status = \${status}, updated_at = NOW() WHERE id = \${id} RETURNING *\`
+  return sql`UPDATE orders SET status = ${status}, updated_at = NOW() WHERE id = ${id} RETURNING *`
 }
 
 export async function createOrder(data: {
@@ -53,30 +70,30 @@ export async function createOrder(data: {
 }) {
   const orderNum = 'TM' + String(Date.now()).slice(-6)
   const total = (data.quantity || 1) * (data.price_per_ticket || 0)
-  const rows = await sql\`
+  const rows = await sql`
     INSERT INTO orders (order_number, customer_id, event_id, seat_zone, quantity, price_per_ticket, total_price, special_instructions)
-    VALUES (\${orderNum}, \${data.customer_id || null}, \${data.event_id || null}, \${data.seat_zone || null},
-            \${data.quantity || 1}, \${data.price_per_ticket || null}, \${total || null}, \${data.special_instructions || null})
+    VALUES (${orderNum}, ${data.customer_id || null}, ${data.event_id || null}, ${data.seat_zone || null},
+            ${data.quantity || 1}, ${data.price_per_ticket || null}, ${total || null}, ${data.special_instructions || null})
     RETURNING *
-  \`
+  `
   return rows[0]
 }
 
 export async function logActivity(order_id: string, action: string, details?: Record<string, unknown>) {
-  return sql\`
+  return sql`
     INSERT INTO activity_logs (order_id, action, details)
-    VALUES (\${order_id}, \${action}, \${JSON.stringify(details || {})})
-  \`
+    VALUES (${order_id}, ${action}, ${JSON.stringify(details || {})})
+  `
 }
 
 export async function getDashboardStats() {
-  const rows = await sql\`
+  const rows = await sql`
     SELECT
       COUNT(*) FILTER (WHERE status = 'pending') as pending,
       COUNT(*) FILTER (WHERE status IN ('bot_working','awaiting_confirmation','ready_for_booking')) as in_progress,
       COUNT(*) FILTER (WHERE status = 'booking_successful' AND DATE(created_at) = CURRENT_DATE) as success_today,
       SUM(total_price) FILTER (WHERE status = 'booking_successful' AND DATE(created_at) = CURRENT_DATE) as revenue_today
     FROM orders
-  \`
+  `
   return rows[0]
 }
