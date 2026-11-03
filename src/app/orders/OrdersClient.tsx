@@ -1,5 +1,5 @@
 "use client"
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
 import { useRouter } from 'next/navigation'
 
 const STATUS_LABEL: Record<string, string> = {
@@ -17,6 +17,39 @@ export default function OrdersClient({ orders }: { orders: any[] }) {
   const router = useRouter()
   const [loading, setLoading] = useState<string | null>(null)
   const [screenshot, setScreenshot] = useState<{ url: string; orderNum: string } | null>(null)
+  const [showAdd, setShowAdd] = useState(false)
+  const [events, setEvents] = useState<any[]>([])
+  const [customers, setCustomers] = useState<any[]>([])
+  const [form, setForm] = useState({ event_id: '', customer_id: '', quantity: '1', seat_zone: '', price_per_ticket: '', special_instructions: '' })
+  const [saving, setSaving] = useState(false)
+
+  useEffect(() => {
+    if (showAdd) {
+      fetch('/api/events').then(r => r.json()).then(d => setEvents(d.events || []))
+      fetch('/api/customers').then(r => r.json()).then(d => setCustomers(d.customers || []))
+    }
+  }, [showAdd])
+
+  async function addOrder(e: React.FormEvent) {
+    e.preventDefault()
+    setSaving(true)
+    await fetch('/api/orders', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        event_id: form.event_id || null,
+        customer_id: form.customer_id || null,
+        quantity: parseInt(form.quantity) || 1,
+        seat_zone: form.seat_zone || null,
+        price_per_ticket: parseFloat(form.price_per_ticket) || null,
+        special_instructions: form.special_instructions || null,
+      })
+    })
+    setSaving(false)
+    setShowAdd(false)
+    setForm({ event_id: '', customer_id: '', quantity: '1', seat_zone: '', price_per_ticket: '', special_instructions: '' })
+    router.refresh()
+  }
 
   async function updateStatus(id: string, status: string) {
     setLoading(id + status)
@@ -31,7 +64,6 @@ export default function OrdersClient({ orders }: { orders: any[] }) {
 
   return (
     <div>
-      {/* Screenshot modal */}
       {screenshot && (
         <div onClick={() => setScreenshot(null)} style={{
           position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.8)',
@@ -50,10 +82,66 @@ export default function OrdersClient({ orders }: { orders: any[] }) {
         </div>
       )}
 
-      <div style={{ marginBottom: 24 }}>
-        <h1 style={{ fontSize: 26, fontWeight: 700, color: '#e8e8f0' }}>ออเดอร์ทั้งหมด</h1>
-        <p style={{ color: '#a0a0b8', marginTop: 4 }}>{orders.length} รายการ</p>
+      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 24 }}>
+        <div>
+          <h1 style={{ fontSize: 26, fontWeight: 700, color: '#e8e8f0' }}>ออเดอร์ทั้งหมด</h1>
+          <p style={{ color: '#a0a0b8', marginTop: 4 }}>{orders.length} รายการ</p>
+        </div>
+        <button onClick={() => setShowAdd(!showAdd)} style={{
+          padding: '10px 20px', background: '#7c3aed', color: '#fff',
+          border: 'none', borderRadius: 8, cursor: 'pointer', fontWeight: 600, fontSize: 14
+        }}>+ เพิ่มออเดอร์</button>
       </div>
+
+      {showAdd && (
+        <form onSubmit={addOrder} style={{ background: '#12122a', borderRadius: 12, padding: 24, marginBottom: 24 }}>
+          <h3 style={{ color: '#e8e8f0', marginBottom: 16 }}>สร้างออเดอร์ใหม่</h3>
+          <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12, marginBottom: 16 }}>
+            <div>
+              <label style={{ display: 'block', color: '#a0a0b8', fontSize: 12, marginBottom: 6 }}>คอนเสิร์ต *</label>
+              <select required value={form.event_id} onChange={e => setForm({...form, event_id: e.target.value})}
+                style={{ width: '100%', padding: '9px 12px', background: '#0d0d20', border: '1px solid #2a2a4a', borderRadius: 8, color: '#e8e8f0', fontSize: 14 }}>
+                <option value="">-- เลือกคอนเสิร์ต --</option>
+                {events.map(ev => <option key={ev.id} value={ev.id}>{ev.name}</option>)}
+              </select>
+            </div>
+            <div>
+              <label style={{ display: 'block', color: '#a0a0b8', fontSize: 12, marginBottom: 6 }}>ลูกค้า</label>
+              <select value={form.customer_id} onChange={e => setForm({...form, customer_id: e.target.value})}
+                style={{ width: '100%', padding: '9px 12px', background: '#0d0d20', border: '1px solid #2a2a4a', borderRadius: 8, color: '#e8e8f0', fontSize: 14 }}>
+                <option value="">-- ไม่ระบุ --</option>
+                {customers.map(c => <option key={c.id} value={c.id}>{c.name} {c.phone ? `(${c.phone})` : ''}</option>)}
+              </select>
+            </div>
+            <div>
+              <label style={{ display: 'block', color: '#a0a0b8', fontSize: 12, marginBottom: 6 }}>จำนวนบัตร</label>
+              <input type="number" min="1" value={form.quantity} onChange={e => setForm({...form, quantity: e.target.value})}
+                style={{ width: '100%', padding: '9px 12px', background: '#0d0d20', border: '1px solid #2a2a4a', borderRadius: 8, color: '#e8e8f0', fontSize: 14, boxSizing: 'border-box' }} />
+            </div>
+            <div>
+              <label style={{ display: 'block', color: '#a0a0b8', fontSize: 12, marginBottom: 6 }}>โซน / ที่นั่ง</label>
+              <input value={form.seat_zone} onChange={e => setForm({...form, seat_zone: e.target.value})} placeholder="เช่น A, B, VIP"
+                style={{ width: '100%', padding: '9px 12px', background: '#0d0d20', border: '1px solid #2a2a4a', borderRadius: 8, color: '#e8e8f0', fontSize: 14, boxSizing: 'border-box' }} />
+            </div>
+            <div>
+              <label style={{ display: 'block', color: '#a0a0b8', fontSize: 12, marginBottom: 6 }}>ราคา/ใบ (บาท)</label>
+              <input type="number" value={form.price_per_ticket} onChange={e => setForm({...form, price_per_ticket: e.target.value})} placeholder="0"
+                style={{ width: '100%', padding: '9px 12px', background: '#0d0d20', border: '1px solid #2a2a4a', borderRadius: 8, color: '#e8e8f0', fontSize: 14, boxSizing: 'border-box' }} />
+            </div>
+            <div>
+              <label style={{ display: 'block', color: '#a0a0b8', fontSize: 12, marginBottom: 6 }}>หมายเหตุพิเศษ</label>
+              <input value={form.special_instructions} onChange={e => setForm({...form, special_instructions: e.target.value})} placeholder="คำสั่งพิเศษสำหรับ bot"
+                style={{ width: '100%', padding: '9px 12px', background: '#0d0d20', border: '1px solid #2a2a4a', borderRadius: 8, color: '#e8e8f0', fontSize: 14, boxSizing: 'border-box' }} />
+            </div>
+          </div>
+          <div style={{ display: 'flex', gap: 8 }}>
+            <button type="submit" disabled={saving} style={{ padding: '9px 20px', background: '#7c3aed', color: '#fff', border: 'none', borderRadius: 8, cursor: 'pointer', fontWeight: 600 }}>
+              {saving ? 'กำลังบันทึก...' : '✅ สร้างออเดอร์'}
+            </button>
+            <button type="button" onClick={() => setShowAdd(false)} style={{ padding: '9px 20px', background: '#1a1a3a', color: '#a0a0b8', border: '1px solid #2a2a4a', borderRadius: 8, cursor: 'pointer' }}>ยกเลิก</button>
+          </div>
+        </form>
+      )}
 
       <div style={{ background: '#12122a', borderRadius: 12, overflow: 'hidden' }}>
         <table style={{ width: '100%', borderCollapse: 'collapse' }}>
@@ -85,36 +173,26 @@ export default function OrdersClient({ orders }: { orders: any[] }) {
                 </td>
                 <td style={{ padding: '14px 16px' }}>
                   <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
-                    {/* Screenshot button */}
                     {o.bot_screenshot_url && (
                       <button onClick={() => setScreenshot({ url: o.bot_screenshot_url, orderNum: o.order_number })}
                         style={{ padding: '5px 12px', background: '#1e3a5f', color: '#60a5fa', border: '1px solid #3b82f6', borderRadius: 6, cursor: 'pointer', fontSize: 12 }}>
                         📸 ดูรูป
                       </button>
                     )}
-                    {/* Confirm button */}
                     {o.status === 'awaiting_confirmation' && (
-                      <button
-                        disabled={!!loading}
-                        onClick={() => updateStatus(o.id, 'confirmed')}
+                      <button disabled={!!loading} onClick={() => updateStatus(o.id, 'confirmed')}
                         style={{ padding: '5px 12px', background: '#064e3b', color: '#10b981', border: '1px solid #10b981', borderRadius: 6, cursor: 'pointer', fontSize: 12, opacity: loading ? 0.6 : 1 }}>
                         {loading === o.id + 'confirmed' ? '...' : '✅ Confirm'}
                       </button>
                     )}
-                    {/* Reject button */}
                     {['awaiting_confirmation', 'bot_working', 'ready_for_booking'].includes(o.status) && (
-                      <button
-                        disabled={!!loading}
-                        onClick={() => updateStatus(o.id, 'booking_failed')}
+                      <button disabled={!!loading} onClick={() => updateStatus(o.id, 'booking_failed')}
                         style={{ padding: '5px 12px', background: '#450a0a', color: '#ef4444', border: '1px solid #ef4444', borderRadius: 6, cursor: 'pointer', fontSize: 12, opacity: loading ? 0.6 : 1 }}>
                         {loading === o.id + 'booking_failed' ? '...' : '❌ ยกเลิก'}
                       </button>
                     )}
-                    {/* Re-queue button */}
                     {o.status === 'booking_failed' && (
-                      <button
-                        disabled={!!loading}
-                        onClick={() => updateStatus(o.id, 'ready_for_booking')}
+                      <button disabled={!!loading} onClick={() => updateStatus(o.id, 'ready_for_booking')}
                         style={{ padding: '5px 12px', background: '#1e1b4b', color: '#818cf8', border: '1px solid #6366f1', borderRadius: 6, cursor: 'pointer', fontSize: 12, opacity: loading ? 0.6 : 1 }}>
                         🔄 ลองใหม่
                       </button>
