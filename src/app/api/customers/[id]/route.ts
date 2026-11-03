@@ -7,7 +7,7 @@ export async function PUT(req: NextRequest, { params }: { params: Promise<{ id: 
   if (!name) return NextResponse.json({ error: 'name required' }, { status: 400 })
   const rows = await sql`
     UPDATE customers SET name=${name}, phone=${phone||null}, line_id=${line_id||null},
-    notes=${notes||null}, updated_at=NOW() WHERE id=${id} RETURNING *`
+    notes=${notes||null}  WHERE id=${id} RETURNING *`
   return NextResponse.json(rows[0])
 }
 
