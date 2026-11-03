@@ -22,9 +22,9 @@ export default function EventsClient({ events }: { events: any[] }) {
   function openEdit(ev: any) {
     setForm({
       name: ev.name || '', venue: ev.venue || '',
-      event_date: ev.event_date ? ev.event_date.slice(0,16) : '',
+      event_date: ev.event_date ? new Date(ev.event_date).toISOString().slice(0,16) : '',
       ticket_url: ev.ticket_url || '',
-      sale_start: ev.sale_start ? ev.sale_start.slice(0,16) : '',
+      sale_start: ev.sale_start ? new Date(ev.sale_start).toISOString().slice(0,16) : '',
       notes: ev.notes || ''
     })
     setEditId(ev.id); setShowAdd(true)
