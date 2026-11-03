@@ -58,23 +58,43 @@ async function log(orderId: string, action: string, details: Record<string, unkn
 }
 
 async function saveScreenshot(orderId: string, buffer: Buffer): Promise<string> {
-  // Upload to Vercel API so screenshot is accessible from web
   const filename = `${orderId}-${Date.now()}.png`
   const base64 = buffer.toString('base64')
-  const APP_URL = process.env.APP_URL || 'https://ticket-mate-os.vercel.app'
-  const res = await fetch(`${APP_URL}/api/screenshots/upload`, {
-    method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({ filename, data: base64 })
-  })
-  if (res.ok) {
-    const json = await res.json() as { url: string }
-    return json.url
+
+  // Primary: Try uploading to Vercel API
+  try {
+    const APP_URL = process.env.APP_URL || 'https://ticket-mate-os.vercel.app'
+    const res = await fetch(`${APP_URL}/api/screenshots/upload`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ filename, data: base64 }),
+      signal: AbortSignal.timeout(10000)
+    })
+    if (res.ok) {
+      const json = await res.json() as { url: string }
+      console.log(`[Bot] Screenshot uploaded via API: ${json.url}`)
+      return json.url
+    }
+  } catch (uploadErr) {
+    console.warn(`[Bot] API upload failed, falling back to direct DB insert:`, uploadErr)
   }
-  // fallback: save locally
-  fs.mkdirSync(SCREENSHOT_DIR, { recursive: true })
-  fs.writeFileSync(path.join(SCREENSHOT_DIR, filename), buffer)
-  return `/screenshots/${filename}`
+
+  // Fallback: Insert directly into DB (bot already has DB connection)
+  try {
+    await query(
+      `INSERT INTO screenshots (filename, data) VALUES ($1, $2)
+       ON CONFLICT (filename) DO UPDATE SET data = EXCLUDED.data`,
+      [filename, base64]
+    )
+    console.log(`[Bot] Screenshot saved to DB directly: /api/screenshots/${filename}`)
+    return `/api/screenshots/${filename}`
+  } catch (dbErr) {
+    console.error(`[Bot] DB insert also failed:`, dbErr)
+    // Last resort: save locally
+    fs.mkdirSync(SCREENSHOT_DIR, { recursive: true })
+    fs.writeFileSync(path.join(SCREENSHOT_DIR, filename), buffer)
+    return `/screenshots/${filename}`
+  }
 }
 
 async function processOrder(order: Record<string, unknown>) {
