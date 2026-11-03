@@ -57,9 +57,22 @@ async function log(orderId: string, action: string, details: Record<string, unkn
     [orderId, action, JSON.stringify(details)])
 }
 
-function saveScreenshot(orderId: string, buffer: Buffer): string {
-  fs.mkdirSync(SCREENSHOT_DIR, { recursive: true })
+async function saveScreenshot(orderId: string, buffer: Buffer): Promise<string> {
+  // Upload to Vercel API so screenshot is accessible from web
   const filename = `${orderId}-${Date.now()}.png`
+  const base64 = buffer.toString('base64')
+  const APP_URL = process.env.APP_URL || 'https://ticket-mate-os.vercel.app'
+  const res = await fetch(`${APP_URL}/api/screenshots/upload`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ filename, data: base64 })
+  })
+  if (res.ok) {
+    const json = await res.json() as { url: string }
+    return json.url
+  }
+  // fallback: save locally
+  fs.mkdirSync(SCREENSHOT_DIR, { recursive: true })
   fs.writeFileSync(path.join(SCREENSHOT_DIR, filename), buffer)
   return `/screenshots/${filename}`
 }
@@ -87,7 +100,7 @@ async function processOrder(order: Record<string, unknown>) {
     await page.goto(ticketUrl, { waitUntil: 'domcontentloaded', timeout: 30000 })
     await page.waitForTimeout(2000)
     const screenshot1 = await page.screenshot({ fullPage: false })
-    const screenshotUrl = saveScreenshot(orderId, screenshot1)
+    const screenshotUrl = await saveScreenshot(orderId, screenshot1)
     await setStatus(orderId, 'awaiting_confirmation', { bot_screenshot_url: screenshotUrl })
     await log(orderId, 'screenshot_taken', { url: screenshotUrl })
     console.log(`[Bot] Order ${order.order_number}: Awaiting admin confirmation...`)
@@ -114,7 +127,7 @@ async function processOrder(order: Record<string, unknown>) {
     // e.g.: await page.click('#confirm-purchase-button')
     // NEVER enter credit cards or personal IDs (PDPA compliance)
     const screenshot2 = await page.screenshot({ fullPage: false })
-    const finalUrl = saveScreenshot(orderId, screenshot2)
+    const finalUrl = await saveScreenshot(orderId, screenshot2)
     await setStatus(orderId, 'booking_successful', { bot_screenshot_url: finalUrl })
     await log(orderId, 'booking_completed', { final_screenshot: finalUrl })
     console.log(`[Bot] Order ${order.order_number}: SUCCESS`)
