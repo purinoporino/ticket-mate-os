@@ -173,6 +173,14 @@ export default function OrdersClient({ orders }: { orders: any[] }) {
                 </td>
                 <td style={{ padding: '14px 16px' }}>
                   <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
+                    {o.status === 'pending' && (
+                      <button
+                        disabled={!!loading}
+                        onClick={() => updateStatus(o.id, 'ready_for_booking')}
+                        style={{ padding: '5px 12px', background: '#1e3a5f', color: '#60a5fa', border: '1px solid #3b82f6', borderRadius: 6, cursor: 'pointer', fontSize: 12, opacity: loading ? 0.6 : 1 }}>
+                        {loading === o.id + 'ready_for_booking' ? '...' : '🤖 ส่งให้ Bot'}
+                      </button>
+                    )}
                     {o.bot_screenshot_url && (
                       <button onClick={() => setScreenshot({ url: o.bot_screenshot_url, orderNum: o.order_number })}
                         style={{ padding: '5px 12px', background: '#1e3a5f', color: '#60a5fa', border: '1px solid #3b82f6', borderRadius: 6, cursor: 'pointer', fontSize: 12 }}>
