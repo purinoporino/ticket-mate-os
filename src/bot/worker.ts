@@ -110,15 +110,65 @@ async function processOrder(order: Record<string, unknown>) {
   await log(orderId, 'bot_started', { bot_id: BOT_ID, url: ticketUrl })
   let browser: Browser | null = null
   try {
-    browser = await chromium.launch({ headless: true })
+    // Use stealth args to bypass Akamai/Cloudflare bot detection
+    browser = await chromium.launch({
+      headless: true,
+      args: [
+        '--no-sandbox',
+        '--disable-setuid-sandbox',
+        '--disable-blink-features=AutomationControlled',
+        '--disable-features=IsolateOrigins,site-per-process',
+        '--disable-dev-shm-usage',
+        '--disable-web-security',
+        '--lang=th-TH,th',
+      ]
+    })
     const ctx = await browser.newContext({
       viewport: { width: 1280, height: 900 },
-      userAgent: 'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 Chrome/120 Safari/537.36'
+      userAgent: 'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/131.0.0.0 Safari/537.36',
+      locale: 'th-TH',
+      timezoneId: 'Asia/Bangkok',
+      extraHTTPHeaders: {
+        'Accept-Language': 'th-TH,th;q=0.9,en-US;q=0.8,en;q=0.7',
+        'Accept': 'text/html,application/xhtml+xml,application/xml;q=0.9,image/avif,image/webp,image/apng,*/*;q=0.8',
+        'sec-ch-ua': '"Google Chrome";v="131", "Chromium";v="131", "Not_A Brand";v="24"',
+        'sec-ch-ua-mobile': '?0',
+        'sec-ch-ua-platform': '"macOS"',
+      }
     })
     sessions.set(orderId, { browser, ctx })
     const page = await ctx.newPage()
+
+    // Hide webdriver traces
+    await page.addInitScript(() => {
+      Object.defineProperty(navigator, 'webdriver', { get: () => undefined })
+      Object.defineProperty(navigator, 'plugins', { get: () => [1, 2, 3, 4, 5] })
+      Object.defineProperty(navigator, 'languages', { get: () => ['th-TH', 'th', 'en-US', 'en'] })
+      // @ts-ignore
+      window.chrome = { runtime: {} }
+    })
+
     await page.goto(ticketUrl, { waitUntil: 'domcontentloaded', timeout: 30000 })
-    await page.waitForTimeout(2000)
+    await page.waitForTimeout(3000)
+
+    // Check if blocked by Akamai
+    const pageTitle = await page.title()
+    const pageText = await page.evaluate(() => document.body?.innerText?.slice(0, 200) || '')
+    if (pageText.includes('Access Denied') || pageText.includes('403')) {
+      await log(orderId, 'bot_blocked', { message: 'Akamai CDN blocked access', title: pageTitle })
+      // Still save screenshot so admin can see
+    }
+
+    // Try to find and click "Buy" button on ThaiTicketMajor
+    try {
+      const buyBtn = page.locator('a:has-text("ซื้อบัตร"), button:has-text("ซื้อบัตร"), a:has-text("BUY"), .btn-buy, [class*="buy"]').first()
+      if (await buyBtn.isVisible({ timeout: 3000 })) {
+        await buyBtn.click()
+        await page.waitForTimeout(2000)
+        await log(orderId, 'clicked_buy_button', {})
+      }
+    } catch { /* button not found, that is ok */ }
+
     const screenshot1 = await page.screenshot({ fullPage: false })
     const screenshotUrl = await saveScreenshot(orderId, screenshot1)
     await setStatus(orderId, 'awaiting_confirmation', { bot_screenshot_url: screenshotUrl })
