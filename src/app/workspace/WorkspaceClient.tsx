@@ -96,7 +96,7 @@ export default function WorkspaceClient({ active, logs }: { active: any[], logs:
 
   async function sendToBot(orderId: string) {
     setActing(true)
-    await fetch(\`/api/orders/\${orderId}/status\`, {
+    await fetch(`/api/orders/${orderId}/status`, {
       method: 'PATCH', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ status: 'ready_for_booking' })
     })
     setActing(false)
