@@ -91,8 +91,17 @@ export default function WorkspaceClient({ active, logs }: { active: any[], logs:
     setTimeout(() => setCopied(false), 2500)
   }
 
-  const colors: Record<string,string> = { ready_for_booking:'#3b82f6', bot_working:'#f59e0b', awaiting_confirmation:'#ef4444' }
-  const labels: Record<string,string> = { ready_for_booking:'รอกด', bot_working:'กำลังกด', awaiting_confirmation:'รอยืนยัน' }
+  const colors: Record<string,string> = { pending:'#7c3aed', ready_for_booking:'#3b82f6', bot_working:'#f59e0b', awaiting_confirmation:'#ef4444' }
+  const labels: Record<string,string> = { pending:'ใหม่ รอส่ง Bot', ready_for_booking:'รอกด', bot_working:'กำลังกด', awaiting_confirmation:'รอยืนยัน' }
+
+  async function sendToBot(orderId: string) {
+    setActing(true)
+    await fetch(\`/api/orders/\${orderId}/status\`, {
+      method: 'PATCH', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ status: 'ready_for_booking' })
+    })
+    setActing(false)
+    router.refresh()
+  }
 
   const zoneOptions = ['A1','A2','A3','B1','B2','B3','C1','C4']
   const showOptions = [{ val:'81858', label:'14:00' }, { val:'81859', label:'19:00' }]
@@ -229,6 +238,12 @@ export default function WorkspaceClient({ active, logs }: { active: any[], logs:
                 <span style={{ background: colors[o.status]+'22', color: colors[o.status], padding:'5px 12px', borderRadius:20, fontSize:12, fontWeight:600 }}>
                   {labels[o.status]}
                 </span>
+                {/* Send to Bot button (pending) */}
+                {o.status === 'pending' && (
+                  <button disabled={acting} onClick={() => sendToBot(o.id)} style={{ padding:'6px 14px', background:'#4c1d95', color:'#c4b5fd', border:'1px solid #7c3aed', borderRadius:8, cursor:'pointer', fontSize:13, fontWeight:700 }}>
+                    🤖 ส่งให้ Bot
+                  </button>
+                )}
                 {/* Booking Script button */}
                 {o.ticket_url && (
                   <button onClick={() => setScriptOrder({...o, preferred_show_id:'81858'})} style={{ padding:'6px 12px', background:'#1e1b4b', color:'#a78bfa', border:'1px solid #4c1d95', borderRadius:8, cursor:'pointer', fontSize:13, fontWeight:600 }}>

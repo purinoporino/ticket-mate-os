@@ -154,9 +154,16 @@ async function processOrder(order: Record<string, unknown>) {
     // Check if blocked by Akamai
     const pageTitle = await page.title()
     const pageText = await page.evaluate(() => document.body?.innerText?.slice(0, 200) || '')
-    if (pageText.includes('Access Denied') || pageText.includes('403')) {
-      await log(orderId, 'bot_blocked', { message: 'Akamai CDN blocked access', title: pageTitle })
-      // Still save screenshot so admin can see
+    if (pageText.includes('Access Denied') || pageText.includes('403') || pageTitle.includes('Access Denied')) {
+      const screenshot0 = await page.screenshot({ fullPage: false })
+      const blockedUrl = await saveScreenshot(orderId, screenshot0)
+      await setStatus(orderId, 'booking_failed', { bot_screenshot_url: blockedUrl })
+      await log(orderId, 'bot_blocked', { 
+        message: 'ThaiTicketMajor บล็อค headless browser (Akamai CDN) — ใช้ Script จองแทน',
+        title: pageTitle, screenshot: blockedUrl
+      })
+      console.log(\`[Bot] Order \${order.order_number}: BLOCKED by Akamai — use Booking Script in real Chrome\`)
+      await browser.close(); sessions.delete(orderId); return
     }
 
     // Try to find and click "Buy" button on ThaiTicketMajor

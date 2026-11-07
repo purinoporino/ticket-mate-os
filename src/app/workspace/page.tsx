@@ -10,7 +10,7 @@ export default async function WorkspacePage() {
     FROM orders o
     LEFT JOIN events e ON o.event_id = e.id
     LEFT JOIN customers c ON o.customer_id = c.id
-    WHERE o.status IN ('bot_working','awaiting_confirmation','ready_for_booking')
+    WHERE o.status IN ('pending','bot_working','awaiting_confirmation','ready_for_booking')
     ORDER BY o.updated_at DESC
     LIMIT 20
   `

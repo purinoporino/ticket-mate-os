@@ -18,6 +18,7 @@ export default function OrdersClient({ orders }: { orders: any[] }) {
   const [loading, setLoading] = useState<string | null>(null)
   const [screenshot, setScreenshot] = useState<{ url: string; orderNum: string } | null>(null)
   const [showAdd, setShowAdd] = useState(false)
+  const [toast, setToast] = useState<string | null>(null)
   const [events, setEvents] = useState<any[]>([])
   const [customers, setCustomers] = useState<any[]>([])
   const [form, setForm] = useState({ event_id: '', customer_id: '', quantity: '1', seat_zone: '', price_per_ticket: '', special_instructions: '' })
@@ -33,7 +34,7 @@ export default function OrdersClient({ orders }: { orders: any[] }) {
   async function addOrder(e: React.FormEvent) {
     e.preventDefault()
     setSaving(true)
-    await fetch('/api/orders', {
+    const res = await fetch('/api/orders', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({
@@ -45,9 +46,14 @@ export default function OrdersClient({ orders }: { orders: any[] }) {
         special_instructions: form.special_instructions || null,
       })
     })
+    const data = await res.json()
     setSaving(false)
     setShowAdd(false)
     setForm({ event_id: '', customer_id: '', quantity: '1', seat_zone: '', price_per_ticket: '', special_instructions: '' })
+    if (data.order) {
+      setToast(`✅ สร้าง ${data.order.order_number} แล้ว — กด "🤖 ส่งให้ Bot" เพื่อเริ่มจอง`)
+      setTimeout(() => setToast(null), 6000)
+    }
     router.refresh()
   }
 
@@ -64,6 +70,11 @@ export default function OrdersClient({ orders }: { orders: any[] }) {
 
   return (
     <div>
+      {toast && (
+        <div style={{ position:'fixed', top:16, right:16, zIndex:9999, background:'#10b981', color:'#fff', padding:'12px 20px', borderRadius:10, fontWeight:700, fontSize:14, boxShadow:'0 4px 20px rgba(0,0,0,0.4)' }}>
+          {toast}
+        </div>
+      )}
       {screenshot && (
         <div onClick={() => setScreenshot(null)} style={{
           position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.8)',
