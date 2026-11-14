@@ -49,34 +49,35 @@ function generateBookmarklet(order: any): string {
     }else if(p.includes('thaiticketmajor.com/concert/')){
       /* หน้า concert detail — หา booking link อัตโนมัติ */
       flash('🤖 Ticket Mate: กำลังหาลิงก์จอง...');
+      function extractBookingUrl(el){
+        /* ดึง URL จาก href หรือ onclick เช่น $app.popup.signin('URL') */
+        var href=el.href||'';
+        if(href&&!href.includes('javascript:'))return href;
+        var oc=el.getAttribute('onclick')||'';
+        var m=oc.match(/['"]( https?:\/\/booking\.thaiticketmajor\.com[^'"]+)['"]/)||oc.match(/(https?:\/\/booking\.thaiticketmajor\.com[^'")\s]+)/);
+        return m?m[1].trim():'';
+      }
       async function findBookingLink(){
-        /* ลองหา link ที่มี booking.thaiticketmajor.com ในหน้าก่อน */
-        var links=[].slice.call(document.querySelectorAll('a[href*="booking.thaiticketmajor.com"]'));
-        if(links.length===0){
-          /* ถ้ายังไม่มี ให้คลิก dropdown "เลือกรอบ" เพื่อ expand */
-          var btn=document.querySelector('button.select-round,a.select-round,.select-round-btn,[class*="select-round"],[onclick*="round"],[data-toggle="dropdown"],button[class*="dropdown"]');
-          if(!btn){
-            /* ลองหาปุ่มที่มีข้อความ เลือกรอบ */
-            var allBtns=[].slice.call(document.querySelectorAll('a,button'));
-            for(var b=0;b<allBtns.length;b++){
-              if(allBtns[b].textContent.includes('เลือกรอบ')){btn=allBtns[b];break;}
-            }
-          }
-          if(btn){flash('🤖 Ticket Mate: คลิกเลือกรอบ...');btn.click();await wait(1200);}
-          links=[].slice.call(document.querySelectorAll('a[href*="booking.thaiticketmajor.com"]'));
+        /* ขั้น 1: หาปุ่ม เลือกรอบ แล้ว expand */
+        var allEls=[].slice.call(document.querySelectorAll('a,button'));
+        var roundBtn=null;
+        for(var b=0;b<allEls.length;b++){if(allEls[b].textContent.includes('เลือกรอบ')){roundBtn=allEls[b];break;}}
+        if(roundBtn){flash('🤖 Ticket Mate: คลิกเลือกรอบ...');roundBtn.click();await wait(1000);}
+        /* ขั้น 2: หาปุ่มรอบที่ตรงกับ showId — ดึง URL จาก onclick */
+        var showBtns=[].slice.call(document.querySelectorAll('a.btn,[onclick*="booking.thaiticketmajor.com"]'));
+        var targetUrl='';
+        /* ลองหาอันที่ตรง showId ก่อน */
+        for(var i=0;i<showBtns.length;i++){
+          var u=extractBookingUrl(showBtns[i]);
+          if(u){if(!targetUrl)targetUrl=u;if(u.includes(CFG.showId)){targetUrl=u;break;}}
         }
-        if(links.length>0){
-          /* หา link ที่ตรงกับ showId ถ้าไม่เจอเอาอันแรก */
-          var target=links[0];
-          for(var i=0;i<links.length;i++){
-            if(links[i].href.includes(CFG.showId)){target=links[i];break;}
-          }
-          flash('🤖 Ticket Mate: ไปหน้าจอง → '+target.href.slice(0,60)+'...');
-          await wait(600);
-          location.href=target.href;
+        if(targetUrl){
+          flash('🤖 Ticket Mate: ไปหน้าจอง...');
+          await wait(500);
+          location.href=targetUrl;
         }else if(CFG.bookingUrl){
-          flash('🤖 Ticket Mate: ใช้ลิงก์จอง fallback...');
-          await wait(600);
+          flash('🤖 Ticket Mate: ใช้ลิงก์ fallback...');
+          await wait(500);
           location.href=CFG.bookingUrl;
         }else{
           flash('⚠️ ไม่พบลิงก์จอง กรุณาคลิกเลือกรอบด้วยตัวเอง');
