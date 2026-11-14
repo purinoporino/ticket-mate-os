@@ -45,7 +45,7 @@ export async function GET(req: NextRequest) {
       alert('${orderNum}\\n\\n\\u0E2B\\u0E22\\u0E38\\u0E14\\u0E17\\u0E35\\u0E48\\u0E2B\\u0E19\\u0E49\\u0E32\\u0E19\\u0E35\\u0E49\\u0E41\\u0E25\\u0E49\\u0E27 — \\u0E01\\u0E23\\u0E38\\u0E13\\u0E32\\u0E01\\u0E23\\u0E2D\\u0E01\\u0E02\\u0E49\\u0E2D\\u0E21\\u0E39\\u0E25\\u0E41\\u0E25\\u0E30\\u0E22\\u0E37\\u0E19\\u0E22\\u0E31\\u0E19\\u0E14\\u0E49\\u0E27\\u0E22\\u0E15\\u0E31\\u0E27\\u0E40\\u0E2D\\u0E07\\u0E04\\u0E23\\u0E31\\u0E1A');
     }else if(p.includes('thaiticketmajor.com/concert/')){
       flash('\\u{1F916} Ticket Mate: \\u0E01\\u0E33\\u0E25\\u0E31\\u0E07\\u0E2B\\u0E32\\u0E25\\u0E34\\u0E07\\u0E01\\u0E4C\\u0E08\\u0E2D\\u0E07...');
-      function extractUrl(el){var h=el.href||'';if(h&&!h.includes('javascript:'))return h;var oc=el.getAttribute('onclick')||'';var m=oc.match(new RegExp('https?://booking\\.thaiticketmajor\\.com[^\'"\\)\\s]+'));return m?m[0].trim():'';}
+      function extractUrl(el){var h=el.href||'';if(h&&h.indexOf('javascript:')<0)return h.trim();var oc=el.getAttribute('onclick')||'';var i=oc.indexOf('https://booking.thaiticketmajor.com');if(i<0)return '';var e=oc.length;for(var j=i;j<oc.length;j++){var c=oc.charCodeAt(j);if(c===34||c===39||c===41||c===32||c===9||c===10||c===13){e=j;break;}}return oc.slice(i,e);}
       async function findLink(){
         var allEls=[].slice.call(document.querySelectorAll('a,button'));
         var roundBtn=null;
