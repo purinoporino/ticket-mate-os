@@ -88,7 +88,14 @@ function generateBookmarklet(order: any): string {
       flash('🤖 Ticket Mate: เปิดหน้าจอง...');
       location.href=CFG.bookingUrl;
     }else{
-      alert('กรุณาเปิด thaiticketmajor.com ก่อนแล้วคลิก bookmarklet นี้นะครับ');
+      /* เปิดจากหน้าอื่นเลย — ไปหน้าจองโดยตรง */
+      if(CFG.bookingUrl){
+        flash('🤖 Ticket Mate: เปิดหน้าจอง...');
+        await wait(400);
+        location.href=CFG.bookingUrl;
+      }else{
+        alert('กรุณาตั้งค่า ticket_url ในออเดอร์ก่อนนะครับ');
+      }
     }
   }
   run();
