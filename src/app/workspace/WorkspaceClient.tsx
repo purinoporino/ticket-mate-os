@@ -1,5 +1,5 @@
 "use client"
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useRef } from 'react'
 import { useRouter } from 'next/navigation'
 
 function generateBookmarklet(order: any): string {
@@ -111,8 +111,14 @@ export default function WorkspaceClient({ active, logs }: { active: any[], logs:
   const [scriptOrder, setScriptOrder] = useState<any | null>(null)
   const [copied, setCopied] = useState(false)
   const [acting, setActing] = useState(false)
+  const dragLinkRef = useRef<HTMLAnchorElement>(null)
 
   // ตั้ง href ผ่าน DOM โดยตรง เพื่อ bypass React's javascript: URL block
+  useEffect(() => {
+    if (dragLinkRef.current && scriptOrder) {
+      dragLinkRef.current.setAttribute('href', generateBookmarklet(scriptOrder))
+    }
+  }, [scriptOrder])
 
   useEffect(() => {
     const t = setTimeout(() => router.refresh(), 5000)
