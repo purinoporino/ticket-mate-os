@@ -1,5 +1,5 @@
 "use client"
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useRef } from 'react'
 import { useRouter } from 'next/navigation'
 
 function generateBookmarklet(order: any): string {
@@ -111,6 +111,14 @@ export default function WorkspaceClient({ active, logs }: { active: any[], logs:
   const [scriptOrder, setScriptOrder] = useState<any | null>(null)
   const [copied, setCopied] = useState(false)
   const [acting, setActing] = useState(false)
+  const dragLinkRef = useRef<HTMLAnchorElement>(null)
+
+  // ตั้ง href ผ่าน DOM โดยตรง เพื่อ bypass React's javascript: URL block
+  useEffect(() => {
+    if (dragLinkRef.current && scriptOrder) {
+      dragLinkRef.current.setAttribute('href', generateBookmarklet(scriptOrder))
+    }
+  }, [scriptOrder])
 
   useEffect(() => {
     const t = setTimeout(() => router.refresh(), 5000)
@@ -243,9 +251,9 @@ export default function WorkspaceClient({ active, logs }: { active: any[], logs:
                 style={{ flex:1, padding:'11px', background: copied ? '#10b981' : '#7c3aed', color:'#fff', border:'none', borderRadius:9, cursor:'pointer', fontWeight:700, fontSize:14 }}>
                 {copied ? '✅ Copied!' : '📋 Copy Bookmarklet'}
               </button>
-              <a href={generateBookmarklet(scriptOrder)}
-                style={{ padding:'11px 18px', background:'#1a1a3a', color:'#a78bfa', border:'1px solid #3b3b6a', borderRadius:9, cursor:'pointer', fontSize:13, textDecoration:'none', display:'flex', alignItems:'center' }}
-                draggable>
+              {/* ref ตั้ง href ผ่าน DOM โดยตรงใน useEffect เพื่อ bypass React javascript: block */}
+              <a ref={dragLinkRef} draggable
+                style={{ padding:'11px 18px', background:'#1a1a3a', color:'#a78bfa', border:'1px solid #3b3b6a', borderRadius:9, cursor:'grab', fontSize:13, textDecoration:'none', display:'flex', alignItems:'center', whiteSpace:'nowrap' }}>
                 🔖 Drag to Bookmarks Bar
               </a>
             </div>
